@@ -2,10 +2,10 @@
 
 if command -v git >/dev/null 2>&1; then
 
-	if curl -o usr/local/bin/knapsack -H "Accept: application/vnd.github.raw" "https://raw.githubusercontent.com/mgrahamjo/knapsack/knapsack"; then
+	if curl -o /usr/local/bin/knapsack -H "Accept: application/vnd.github.raw" https://raw.githubusercontent.com/mgrahamjo/knapsack/master/knapsack; then
 
 		chmod +x /usr/local/bin/knapsack
-
+		
 		echo "Installed knapsack to /usr/local/bin"
 
 	else

@@ -15,7 +15,9 @@ Unlike most package managers, Knapsack doesn't have its own registry. Any git re
 Currently Knapsack is available for OSX. It has not been tested in other *nix environments.
 
 - First install git if you haven't.
-- Run the following command: `curl -o usr/local/bin/knapsack -H "Accept: application/vnd.github.raw" "https://raw.githubusercontent.com/mgrahamjo/knapsack/knapsack; chmod +x /usr/local/bin/knapsack"`
+- Download the knapsack file into /usr/local/bin and make sure it is executable. 
+- This command should do the trick: `curl -o /usr/local/bin/knapsack -H "Accept: application/vnd.github.raw" https://raw.githubusercontent.com/mgrahamjo/knapsack/master/knapsack; chmod +x /usr/local/bin/knapsack`
+- Alternatively, download install.command, right click on it, and select 'open'. You could double click on it if I paid Apple $99 per year, but that offends my open-source proclivities.
 
 ## Usage:
 
