@@ -1,0 +1,252 @@
+#!/bin/bash
+
+DIR=$(pwd)
+KNAPSACK="knapsack"
+
+help() {
+    echo ""
+    echo "########### knapsack help ###########"
+    echo ""
+    echo "knapsack is an npm-style package manager designed to provide a simple alternative to git submodules."
+    echo ""
+    echo "Usage:"
+    echo "knapsack [<install>] [-h] [-b] [-c] [<repository>]"
+    echo "    install: if no repository is specified, installs all repositories listed in .knapsack"
+    echo "    -h|--help: help"
+    echo "    -b|--branch: the branch of the repository you want to install. Defaults to master."
+    echo "    -c|--commit: the hash id of the commit you would like to checkout. Defaults to latest."
+    echo "    repository: the full URL of the git repository you would like to install."
+    echo ""
+    exit 1
+}
+
+parseArguments() {
+
+    PACKAGES=()
+    BRANCH="master"
+    COMMIT="HEAD"
+
+    # Loop through arguments
+    while [[ $# -gt 0 ]]; do
+
+        KEY="$1"
+
+        case $KEY in
+            # ignore install argument
+            install)
+                shift
+            ;;
+            # save branch
+            -b|--branch)
+                BRANCH="$2"
+                shift
+                shift
+            ;;
+            # save commit
+            -c|--commit)
+                COMMIT="$2"
+                shift
+                shift
+            ;;
+            # show help
+            -h|--help)
+                help
+            ;;
+            # treat anything else as a package
+            *)
+                PACKAGES+=("$1")
+                shift
+            ;;
+        esac
+    done
+}
+
+install() {
+
+    PARTS=(${1//\// })
+
+    PACKAGE=${PARTS[${#PARTS[@]}-1]}
+
+    UPDATE=true
+
+    # Remove the package if it already exists
+    if [ -f $DIR/$KNAPSACK/$PACKAGE/.knapsack ]; then
+
+        while read -r LINE; do
+            WORDS=($LINE)
+            if [[ ${WORDS[0]} == "branch" && ${WORDS[1]} == $BRANCH ]]; then
+                UPDATE=false
+            fi
+            if [[ ${WORDS[0]} == "commit" && ${WORDS[1]} == $COMMIT ]]; then
+                UPDATE=false
+            fi
+        done < $DIR/$KNAPSACK/$PACKAGE/.knapsack
+
+        if [ UPDATE == true ]; then
+            rm -rf $DIR/$KNAPSACK/$PACKAGE
+        else
+            echo "$PACKAGE is up to date."
+        fi
+    fi
+
+    if [ "$UPDATE" == "true" ]; then
+
+        # Clone the package
+        if git clone $1 $DIR/$KNAPSACK/$PACKAGE; then
+
+            cd $DIR/$KNAPSACK/$PACKAGE
+
+            git checkout $BRANCH > /dev/null 2>&1
+
+            git checkout $COMMIT > /dev/null 2>&1
+
+            # Clean up
+            rm -rf .git
+            rm .git*
+
+            # Save metadata
+            echo -e "branch $BRANCH\ncommit $COMMIT" > $DIR/$KNAPSACK/$PACKAGE/.knapsack
+
+            cd $DIR
+
+            echo "Installed $PACKAGE."
+
+        else
+            echo "Installation of $PACKAGE failed."
+        fi
+    fi
+}
+
+# If git is working, let's get started.
+
+if command -v git >/dev/null 2>&1; then
+
+    # If this is the first use, we may need to create/update .gitignore
+
+    if [ ! -d $DIR/$KNAPSACK ]; then
+        mkdir $DIR/$KNAPSACK
+        chmod 777 $DIR/$KNAPSACK
+        if [ ! -f $DIR/.gitignore ]; then
+            if echo -e $DIR/$KNAPSACK > .gitignore ; then
+                echo "created .gitignore and added $KNAPSACK."
+            fi
+        else
+            if grep -xq $KNAPSACK "$DIR/.gitignore"; then
+                echo "$KNAPSACK directory is already gitignored."
+            else
+                if printf "\n$KNAPSACK" >> $DIR/.gitignore ; then
+                    echo "added $KNAPSACK to .gitignore."
+                fi
+            fi
+        fi
+    fi
+
+    # No arguments
+    if [ $# == 0 ]; then
+
+        help
+
+    # One argument and it is "install"
+    # Install everything
+    elif [[ $# == 1 && "$1" == "install" ]]; then
+
+        while read -r LINE; do
+
+            WORDS=($LINE)
+
+            if [ ${#WORDS[*]} -eq 3 ]; then
+
+                parseArguments ${WORDS[0]} ${WORDS[1]} ${WORDS[2]}
+
+                install ${WORDS[0]}
+                
+            else
+
+                echo "Malformed .knapsack file."
+                exit 1
+            fi
+
+        done < $DIR/.knapsack
+
+    # Multiple arguments
+    else
+
+        parseArguments
+
+        # Install named packages
+        for ITEM in "${PACKAGES[@]}"; do
+
+            install $ITEM
+
+        done    
+
+    fi
+
+else
+    echo "Please install git before using knapsack."
+fi
+    #else
+
+    #    echo "$1 is not a recognized command. Did you mean 'knapsack install $1'?"
+
+    #fi
+
+    # If this is the first use, we may need to create the knapsack directory and create/update .gitignore
+
+    # if [ ! -d knapsack ]; then
+    #     if [ ! -f .gitignore ]; then
+    #         if echo -e "knapsack" > .gitignore ; then
+    #             echo "gitignored knapsack directory."
+    #         fi
+    #     else
+    #         if grep -xq knapsack ".gitignore"; then
+    #             echo "knapsack directory is already gitignored."
+    #         else
+    #             if printf "\nknapsack" >> .gitignore ; then
+    #                 echo "added knapsack to .gitignore"
+    #             fi
+    #         fi
+    #     fi
+    # fi
+    
+    # if [ "install" == "$1" ]; then
+
+    #     if [ $# -gt 1 ]; then
+
+    #         for ARG in "$@"; do
+    #             if [ "$ARG" != "install" ]; then
+    #                 if ! grep -xq $ARG ".knapsack"; then
+    #                     printf "$ARG\n" >> .knapsack
+    #                     echo "Added $ARG to .knapsack"
+    #                 fi
+    #             fi
+    #         done
+    #     fi
+
+    #     rm -rf knapsack;
+
+    #     if git clone https://github.com/bookinghms/knapsack knapsack --depth 1; then
+
+    #         echo "Downloaded knapsack files. Cleaning up... "
+
+    #         for FILE in $(find ./knapsack -maxdepth 1 -mindepth 1 -type f); do
+    #             rm $FILE
+    #         done
+
+    #         for THING in $(find ./knapsack -maxdepth 1 -mindepth 1 -type d); do
+    #             echo "found $THING"
+    #             if ! grep -xq ${THING##*/} ".knapsack"; then
+    #                 rm -rf $THING
+    #                 echo "removing $THING"
+    #             fi
+    #         done
+
+    #         echo "Success."
+
+    #     fi
+
+    # else
+
+    #     echo "$1 is not a recognized command. Did you mean 'knapsack install $1?"
+
+    # fi
