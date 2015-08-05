@@ -69,6 +69,26 @@ install() {
 
     UPDATE=true
 
+    # Update .knapsack
+    IN_KNAPSACK=false
+
+    if [[ -f $DIR/.knapsack ]]; then
+
+        while read -r LINE; do
+
+            if [[ "$LINE" == "$1 $BRANCH $COMMIT" ]]; then
+                
+                IN_KNAPSACK=true
+            fi
+        done < $DIR/.knapsack
+    fi
+
+    if [[ "$IN_KNAPSACK" == "false" ]]; then
+
+        printf "$1 $BRANCH $COMMIT\n" >> $DIR/.knapsack
+        echo "Added $PACKAGE to .knapsack"        
+    fi
+
     # Remove the package if it already exists
     if [ -f $DIR/$KNAPSACK/$PACKAGE/.knapsack ]; then
 
@@ -101,8 +121,11 @@ install() {
             git checkout $COMMIT > /dev/null 2>&1
 
             # Clean up
-            rm -rf .git
-            rm .git*
+            rm -rf .git > /dev/null 2>&1;
+
+            if ls -U .git* 1> /dev/null 2>&1; then
+                rm .git*
+            fi
 
             # Save metadata
             echo -e "branch $BRANCH\ncommit $COMMIT" > $DIR/$KNAPSACK/$PACKAGE/.knapsack
@@ -171,7 +194,7 @@ if command -v git >/dev/null 2>&1; then
     # Multiple arguments
     else
 
-        parseArguments
+        parseArguments $@
 
         # Install named packages
         for ITEM in "${PACKAGES[@]}"; do
@@ -185,68 +208,3 @@ if command -v git >/dev/null 2>&1; then
 else
     echo "Please install git before using knapsack."
 fi
-    #else
-
-    #    echo "$1 is not a recognized command. Did you mean 'knapsack install $1'?"
-
-    #fi
-
-    # If this is the first use, we may need to create the knapsack directory and create/update .gitignore
-
-    # if [ ! -d knapsack ]; then
-    #     if [ ! -f .gitignore ]; then
-    #         if echo -e "knapsack" > .gitignore ; then
-    #             echo "gitignored knapsack directory."
-    #         fi
-    #     else
-    #         if grep -xq knapsack ".gitignore"; then
-    #             echo "knapsack directory is already gitignored."
-    #         else
-    #             if printf "\nknapsack" >> .gitignore ; then
-    #                 echo "added knapsack to .gitignore"
-    #             fi
-    #         fi
-    #     fi
-    # fi
-    
-    # if [ "install" == "$1" ]; then
-
-    #     if [ $# -gt 1 ]; then
-
-    #         for ARG in "$@"; do
-    #             if [ "$ARG" != "install" ]; then
-    #                 if ! grep -xq $ARG ".knapsack"; then
-    #                     printf "$ARG\n" >> .knapsack
-    #                     echo "Added $ARG to .knapsack"
-    #                 fi
-    #             fi
-    #         done
-    #     fi
-
-    #     rm -rf knapsack;
-
-    #     if git clone https://github.com/bookinghms/knapsack knapsack --depth 1; then
-
-    #         echo "Downloaded knapsack files. Cleaning up... "
-
-    #         for FILE in $(find ./knapsack -maxdepth 1 -mindepth 1 -type f); do
-    #             rm $FILE
-    #         done
-
-    #         for THING in $(find ./knapsack -maxdepth 1 -mindepth 1 -type d); do
-    #             echo "found $THING"
-    #             if ! grep -xq ${THING##*/} ".knapsack"; then
-    #                 rm -rf $THING
-    #                 echo "removing $THING"
-    #             fi
-    #         done
-
-    #         echo "Success."
-
-    #     fi
-
-    # else
-
-    #     echo "$1 is not a recognized command. Did you mean 'knapsack install $1?"
-
-    # fi
